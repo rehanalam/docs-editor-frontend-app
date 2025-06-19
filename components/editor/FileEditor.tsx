@@ -45,13 +45,13 @@ export function FileEditor({ className }: FileEditorProps) {
     });
     
     // Add keyboard shortcuts
-    editor.addCommand(
-      editor.KeyMod.CtrlCmd | editor.KeyCode.KeyS,
-      () => {
-        // Save shortcut - could trigger a save action
-        console.log('Save shortcut pressed');
-      }
-    );
+    // editor.addCommand(
+    //   editor.KeyMod.CtrlCmd | editor.KeyCode.KeyS,
+    //   () => {
+    //     // Save shortcut - could trigger a save action
+    //     console.log('Save shortcut pressed');
+    //   }
+    // );
   };
   
   if (!activeFile) {
@@ -129,7 +129,7 @@ export function FileEditor({ className }: FileEditorProps) {
           },
           quickSuggestions: true,
           renderControlCharacters: false,
-          renderIndentGuides: true,
+          // renderIndentGuides: true,
           renderValidationDecorations: 'editable',
           scrollbar: {
             vertical: 'visible',

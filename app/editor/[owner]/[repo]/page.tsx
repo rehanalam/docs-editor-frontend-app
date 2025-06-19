@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Toaster } from '@/components/ui/sonner';
 import { Github, FileText } from 'lucide-react';
 
+
 function EditorContent() {
   const params = useParams();
   const { state, actions } = useDocsEditor();
