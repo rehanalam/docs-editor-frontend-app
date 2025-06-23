@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { useDocsEditor } from '@/context/DocsEditorContext';
 import { useTheme } from 'next-themes';
+import { json } from 'node:stream/consumers';
 
 interface FileEditorProps {
   className?: string;

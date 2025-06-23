@@ -17,8 +17,20 @@ export interface Branch {
   commit: {
     sha: string;
     url: string;
-  }
+  },
+  protected: false;
+  
   // Add other fields as needed
+}
+
+export interface CommitFile {
+  owner: string;
+  repo: string;
+  path: string;
+  content: string; // raw content (not base64 encoded)
+  message: string;
+  branch?: string;
+  sha?: string;
 }
 
 export class GithubService {
@@ -28,14 +40,14 @@ export class GithubService {
       `${BASE_URL}/repos/${owner}/${repo}/contents/${path}`,
       { params }
     );
-    return response.data;
+    return response;
   }
 
   async getRepositoryBranches(owner: string, repo: string) {
     const response = await axios.get<Branch[]>(
       `${BASE_URL}/repos/${owner}/${repo}/branches`
     );
-    return response.data;
+    return response;
   }
 
   async getRepositoryTree(owner: string, repo: string, branch?: string) {
@@ -44,7 +56,24 @@ export class GithubService {
       `${BASE_URL}/repos/${owner}/${repo}/tree`,
       { params }
     );
-    return response.data;
+    return response;
+  }
+
+  async getFileContent(url: string) {
+    const response = await axios.get(url);
+    return response;
+  }
+
+  async commitChanges(payload: {
+    owner: string;
+    repo: string;
+    branch: string;
+    message: string;
+    files: { path: string; content: string; sha?: string }[];
+    }) {
+    const { owner, repo, ...body } = payload;
+    const response = await axios.post(`${BASE_URL}/repos/${owner}/${repo}/commit`, body);
+    return response;
   }
 }
 

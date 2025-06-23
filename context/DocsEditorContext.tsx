@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { GitHubFile, FileTreeNode, OpenFile, Branch, CommitRequest } from '@/lib/types';
 import { toast } from 'sonner';
+import { githubService, GithubService } from '@/app/api/api';
 
 interface DocsEditorState {
   owner: string;
@@ -32,6 +33,65 @@ type DocsEditorAction =
   | { type: 'SET_COMMITTING'; payload: boolean }
   | { type: 'MARK_FILES_CLEAN' };
 
+export interface GitHubTreeItem {
+  path: string;
+  mode: string;
+  type: 'blob' | 'tree';
+  sha: string;
+  size?: number;
+  url: string;
+}
+
+export interface FileNode {
+  id: string;
+  name: string;
+  path: string;
+  type: 'file' | 'folder';
+  children?: FileNode[];
+}
+  
+
+
+export function transformGitHubTree(items: GitHubTreeItem[]): FileNode[] {
+  // Sort items to process folders first
+  const sortedItems = [...items].sort((a, b) => {
+    if (a.type === 'tree' && b.type === 'blob') return -1;
+    if (a.type === 'blob' && b.type === 'tree') return 1;
+    return 0;
+  });
+
+  const result: FileNode[] = [];
+  const pathMap = new Map<string, FileNode>();
+
+  sortedItems.forEach(item => {
+    const pathParts = item.path.split('/');
+    const name = pathParts[pathParts.length - 1];
+    
+    const node: FileNode = {
+      id: item.sha,
+      name: name,
+      path: item.path,
+      type: item.type === 'blob' ? 'file' : 'folder',
+      children: item.type === 'tree' ? [] : undefined
+    };
+
+    // If this is a nested path, find the parent and add this as a child
+    if (pathParts.length > 1) {
+      const parentPath = pathParts.slice(0, -1).join('/');
+      const parent = pathMap.get(parentPath);
+      if (parent && parent.children) {
+        parent.children.push(node);
+      }
+    } else {
+      result.push(node);
+    }
+
+    pathMap.set(item.path, node);
+  });
+
+  return result;
+}
+
 const initialState: DocsEditorState = {
   owner: '',
   repo: '',
@@ -51,10 +111,10 @@ function docsEditorReducer(state: DocsEditorState, action: DocsEditorAction): Do
       return { ...state, ...action.payload };
     
     case 'SET_CURRENT_BRANCH':
-      return { ...state, currentBranch: action.payload };
+      return { ...state, currentBranch: action.payload,  };
     
     case 'SET_BRANCHES':
-      return { ...state, branches: action.payload };
+      return { ...state, branches: action.payload, currentBranch: action.payload[0].name };
     
     case 'SET_FILE_TREE':
       return { ...state, fileTree: action.payload };
@@ -149,7 +209,7 @@ interface DocsEditorContextType {
     setRepoInfo: (owner: string, repo: string) => void;
     switchBranch: (branch: string) => Promise<void>;
     toggleFileExpanded: (path: string) => void;
-    openFile: (path: string) => Promise<void>;
+    openFile: (path: string, url: string) => Promise<void>;
     closeFile: (index: number) => void;
     setActiveFile: (index: number) => void;
     updateFileContent: (index: number, content: string) => void;
@@ -175,16 +235,14 @@ export function DocsEditorProvider({ children }: { children: React.ReactNode }) 
     dispatch({ type: 'SET_ERROR', payload: null });
     
     try {
-      const response = await fetch(
-        `/api/github/repos/${state.owner}/${state.repo}/tree?ref=${state.currentBranch}`
-      );
+      const response = await githubService.getRepositoryTree(state.owner, state.repo, state.currentBranch);
       
-      if (!response.ok) {
+      if (!response.status) {
         throw new Error(`Failed to load file tree: ${response.statusText}`);
       }
       
-      const data = await response.json();
-      const fileTree = buildFileTree(data.tree);
+      const data = await response.data;
+      const fileTree = buildFileTree(data);
       dispatch({ type: 'SET_FILE_TREE', payload: fileTree });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load file tree';
@@ -199,9 +257,11 @@ export function DocsEditorProvider({ children }: { children: React.ReactNode }) 
     if (!state.owner || !state.repo) return;
     
     try {
-      const response = await fetch(`/api/github/repos/${state.owner}/${state.repo}/branches`);
-      if (response.ok) {
-        const branches = await response.json();
+      const response = await githubService.getRepositoryBranches(state.owner, state.repo);
+
+      console.log('Loading branches for',response);
+      if (response.status === 200) {
+        const branches = await response.data;
         dispatch({ type: 'SET_BRANCHES', payload: branches });
       }
     } catch (error) {
@@ -218,38 +278,42 @@ export function DocsEditorProvider({ children }: { children: React.ReactNode }) 
     dispatch({ type: 'TOGGLE_FILE_EXPANDED', payload: path });
   }, []);
 
-  const openFile = useCallback(async (path: string) => {
+  const openFile = useCallback(async (path: string, url: string) => {
+    console.log('Opening file:', path);
     if (!state.owner || !state.repo) return;
     
     dispatch({ type: 'SET_LOADING', payload: true });
     
     try {
-      const response = await fetch(
-        `/api/github/repos/${state.owner}/${state.repo}/contents/${path}?ref=${state.currentBranch}`
-      );
       
-      if (!response.ok) {
+      const response = await githubService.getFileContent(url);
+
+      if (response.status !== 200) {
         throw new Error(`Failed to load file: ${response.statusText}`);
       }
+
+      if("content" in response.data) {
+        const data: any = response.data;
+        const content = data.encoding === 'base64' 
+          ? atob(data.content.replace(/\n/g, ''))
+          : data.content;
+        
+        const fileName = path.split('/').pop() || '';
+        const language = getLanguageFromFileName(fileName);
+        
+        const openFile: OpenFile = {
+          path,
+          name: fileName,
+          content,
+          originalContent: content,
+          isDirty: false,
+          language,
+        };
+        
+        dispatch({ type: 'OPEN_FILE', payload: openFile });
+      } 
       
-      const data = await response.json();
-      const content = data.encoding === 'base64' 
-        ? atob(data.content.replace(/\n/g, ''))
-        : data.content;
       
-      const fileName = path.split('/').pop() || '';
-      const language = getLanguageFromFileName(fileName);
-      
-      const openFile: OpenFile = {
-        path,
-        name: fileName,
-        content,
-        originalContent: content,
-        isDirty: false,
-        language,
-      };
-      
-      dispatch({ type: 'OPEN_FILE', payload: openFile });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load file';
       dispatch({ type: 'SET_ERROR', payload: message });
@@ -290,6 +354,8 @@ export function DocsEditorProvider({ children }: { children: React.ReactNode }) 
     
     try {
       const commitRequest: CommitRequest = {
+        owner: state.owner,
+        repo: state.repo,
         message,
         branch: state.currentBranch,
         files: dirtyFiles.map(f => ({
@@ -298,16 +364,9 @@ export function DocsEditorProvider({ children }: { children: React.ReactNode }) 
         })),
       };
       
-      const response = await fetch(
-        `/api/github/repos/${state.owner}/${state.repo}/commit`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(commitRequest),
-        }
-      );
-      
-      if (!response.ok) {
+      const response = await githubService.commitChanges(commitRequest);
+      console.log(response);
+      if (!response.status || response.status !== 201) {
         throw new Error(`Failed to commit: ${response.statusText}`);
       }
       
@@ -361,28 +420,25 @@ export function useDocsEditor() {
   return context;
 }
 
-// Helper functions
-function buildFileTree(files: GitHubFile[]): FileTreeNode[] {
+export function buildFileTree(files: GitHubFile[]): FileTreeNode[] {
   const tree: FileTreeNode[] = [];
   const nodeMap = new Map<string, FileTreeNode>();
-  
-  // Sort files so directories come first
-  files.sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === 'dir' ? -1 : 1;
-    }
-    return a.name.localeCompare(b.name);
-  });
-  
+console.log('Building file tree from files:', files);
+  // Normalize and sort
   files.forEach(file => {
+    const isDir = file.type === 'tree';
     const node: FileTreeNode = {
-      ...file,
-      children: file.type === 'dir' ? [] : undefined,
+      name: file.path.split('/').pop() || '',
+      path: file.path,
+      type: isDir ? 'dir' : 'file',
+      sha: file.sha,
+      url: file.url,
       expanded: false,
+      children: isDir ? [] : undefined,
     };
-    
+
     nodeMap.set(file.path, node);
-    
+
     const pathParts = file.path.split('/');
     if (pathParts.length === 1) {
       tree.push(node);
@@ -394,9 +450,22 @@ function buildFileTree(files: GitHubFile[]): FileTreeNode[] {
       }
     }
   });
-  
+
+  // Sort children alphabetically, folders first
+  const sortNodes = (nodes: FileTreeNode[]) => {
+    nodes.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'dir' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    nodes.forEach(node => node.children && sortNodes(node.children));
+  };
+
+  sortNodes(tree);
   return tree;
 }
+
 
 function getLanguageFromFileName(fileName: string): string {
   const extension = fileName.split('.').pop()?.toLowerCase();

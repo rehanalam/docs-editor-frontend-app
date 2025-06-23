@@ -6,5 +6,4 @@ const nextConfig = {
   },
   images: { unoptimized: true },
 };
-components/editor/FileEditor.tsx 
 module.exports = nextConfig;

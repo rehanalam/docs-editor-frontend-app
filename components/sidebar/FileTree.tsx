@@ -29,7 +29,7 @@ export function FileTree({ className }: FileTreeProps) {
             if (isDirectory) {
               actions.toggleFileExpanded(node.path);
             } else {
-              actions.openFile(node.path);
+              actions.openFile(node.path, node.url);
             }
           }}
         >

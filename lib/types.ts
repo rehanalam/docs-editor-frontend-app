@@ -1,19 +1,20 @@
 export interface GitHubFile {
+  path: string;
+  type: 'blob' | 'tree';
+  sha: string;
+  url: string;
+}
+
+export interface FileTreeNode {
   name: string;
   path: string;
   type: 'file' | 'dir';
-  size?: number;
-  sha?: string;
-  url?: string;
-  html_url?: string;
-  git_url?: string;
-  download_url?: string;
+  sha: string;
+  url: string;
+  expanded?: boolean;
+  children?: FileTreeNode[];
 }
 
-export interface FileTreeNode extends GitHubFile {
-  children?: FileTreeNode[];
-  expanded?: boolean;
-}
 
 export interface OpenFile {
   path: string;
@@ -34,6 +35,8 @@ export interface Branch {
 }
 
 export interface CommitRequest {
+  owner: string;
+  repo: string;
   message: string;
   branch: string;
   files: {
