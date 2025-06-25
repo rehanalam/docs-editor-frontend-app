@@ -19,7 +19,8 @@ type DocsAction =
   | { type: 'DELETE_PAGE'; payload: { groupId: string; pageId: string } }
   | { type: 'DELETE_GROUP'; payload: { groupId: string } }
   | { type: 'SET_REPO_INFO'; payload: { owner: string; repo: string; branch: string } }
-  | { type: 'SET_COMMITTING'; payload: boolean };
+  | { type: 'SET_COMMITTING'; payload: boolean }
+  | { type: 'SET_TOC_YAML'; payload: string | undefined };
 
 const initialState: DocsState = {
   toc: { groups: [] },
@@ -27,6 +28,7 @@ const initialState: DocsState = {
   isLoading: false,
   error: null,
   isDirty: false,
+  
 };
 
 interface ExtendedDocsState extends DocsState {
@@ -34,6 +36,7 @@ interface ExtendedDocsState extends DocsState {
   repoName?: string;
   repoBranch?: string;
   isCommitting: boolean;
+  tocYamlRaw?: string;
 }
 
 const extendedInitialState: ExtendedDocsState = {
@@ -102,10 +105,13 @@ function docsReducer(state: ExtendedDocsState, action: DocsAction): ExtendedDocs
     
     case 'ADD_PAGE': {
       const { groupId, title, fileName } = action.payload;
+      const fullPath = fileName.startsWith('content/')
+        ? fileName
+        : `content/${fileName}`;
       const newPage: DocPage = {
         id: `page-${Date.now()}`,
         title,
-        file: fileName,
+        file: fullPath,
         content: `# ${title}\n\nStart writing your documentation here...`,
         lastModified: new Date(),
       };
@@ -189,6 +195,9 @@ function docsReducer(state: ExtendedDocsState, action: DocsAction): ExtendedDocs
     case 'SET_COMMITTING':
       return { ...state, isCommitting: action.payload };
     
+    case 'SET_TOC_YAML':
+      return { ...state, tocYamlRaw: action.payload };
+
     default:
       return state;
   }
@@ -239,13 +248,13 @@ export function DocsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.toc]);
 
-  const loadFromGitHub = useCallback(async (owner: string, repo: string, branch: string = 'main') => {
+  const loadFromGitHub = useCallback(async (owner: string, repo: string, branch: string = 'master') => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
     dispatch({ type: 'SET_REPO_INFO', payload: { owner, repo, branch } });
     
     try {
-      const { toc, contentFiles } = await GitHubDocsParser.parseRepositoryContent(
+      const { toc, contentFiles, rawTocYaml} = await  GitHubDocsParser.parseRepositoryContent(
         owner, 
         repo, 
         branch, 
@@ -253,7 +262,8 @@ export function DocsProvider({ children }: { children: React.ReactNode }) {
       );
       
       dispatch({ type: 'SET_TOC', payload: toc });
-      
+      dispatch({ type: 'SET_TOC_YAML', payload: rawTocYaml }); // ✅ set raw toc yaml
+
       // Save to local storage for offline editing
       DocsStorage.saveTOC(toc);
       toc.groups.forEach(group => {
@@ -281,7 +291,7 @@ export function DocsProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_COMMITTING', payload: true });
     
     try {
-      const { files } = GitHubDocsParser.generateContentStructure(state.toc);
+      const { files } = GitHubDocsParser.generateContentStructure(state.toc, state.tocYamlRaw || '');
       
       const commitRequest = {
         owner: state.repoOwner,

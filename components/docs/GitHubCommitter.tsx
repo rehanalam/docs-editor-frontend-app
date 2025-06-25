@@ -25,6 +25,7 @@ export function GitHubCommitter() {
     if (!commitMessage.trim()) return;
 
     try {
+      console.log('Committing changes to GitHub:', commitMessage.trim());
       await actions.commitToGitHub(commitMessage.trim());
       setCommitMessage('');
       setIsOpen(false);

@@ -42,12 +42,12 @@ export function DocsEditor({ className }: DocsEditorProps) {
     });
 
     // Add save shortcut
-    editor.addCommand(
-      editor.KeyMod.CtrlCmd | editor.KeyCode.KeyS,
-      () => {
-        actions.savePage();
-      }
-    );
+    // editor.addCommand(
+    //   // editor.KeyMod.CtrlCmd | editor.KeyCode.KeyS,
+    //   () => {
+    //     actions.savePage();
+    //   }
+    // );
   };
 
   // Update editor content when page changes
@@ -84,6 +84,7 @@ export function DocsEditor({ className }: DocsEditorProps) {
 
   return (
     <div className={`${className} flex flex-col`}>
+      
       {/* Editor Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
         <div className="flex items-center space-x-3">
@@ -95,8 +96,9 @@ export function DocsEditor({ className }: DocsEditorProps) {
               <div className="flex items-center space-x-1">
                 <Clock className="h-3 w-3" />
                 <span>
-                  {state.currentPage.lastModified.toLocaleDateString()} at{' '}
-                  {state.currentPage.lastModified.toLocaleTimeString()}
+                  {/* {JSON.stringify(state.currentPage)} */}
+                  {/* {state.currentPage.lastModified?.toLocaleDateString() || ""} at{' '}
+                  {state.currentPage.lastModified?.toLocaleTimeString() || ""} */}
                 </span>
               </div>
             </div>
@@ -123,7 +125,7 @@ export function DocsEditor({ className }: DocsEditorProps) {
       {/* Editor */}
       <div className="flex-1">
         <Editor
-          height="100%"
+          height="100vh"
           language="markdown"
           value={state.currentPage.content}
           theme={theme === 'dark' ? 'vs-dark' : 'light'}

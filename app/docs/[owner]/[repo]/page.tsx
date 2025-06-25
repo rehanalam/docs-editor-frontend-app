@@ -20,9 +20,11 @@ function DocsContentWithRepo() {
   
   useEffect(() => {
     if (owner && repo) {
-      actions.loadFromGitHub(owner, repo, 'main');
+      console.log(`Loading documentation for ${owner}/${repo}`);
+      actions.loadFromGitHub(owner, repo, 'master');
+      
     }
-  }, [owner, repo, actions]);
+  }, [owner, repo]);
   
   return (
     <div className="h-screen flex flex-col bg-background">
