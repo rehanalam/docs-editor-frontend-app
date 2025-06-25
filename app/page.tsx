@@ -13,11 +13,20 @@ export default function Home() {
   const router = useRouter();
   const [owner, setOwner] = useState('');
   const [repo, setRepo] = useState('');
+  const [docsOwner, setDocsOwner] = useState('');
+  const [docsRepo, setDocsRepo] = useState('');
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (owner.trim() && repo.trim()) {
       router.push(`/editor/${owner}/${repo}`);
+    }
+  };
+
+  const handleDocsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (docsOwner.trim() && docsRepo.trim()) {
+      router.push(`/docs/${docsOwner}/${docsRepo}`);
     }
   };
   
@@ -165,6 +174,10 @@ export default function Home() {
                   Markdown Support
                 </Badge>
                 <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <Github className="h-4 w-4 mr-2" />
+                  GitHub Sync
+                </Badge>
+                <Badge variant="secondary" className="text-sm py-1 px-3">
                   <Save className="h-4 w-4 mr-2" />
                   Auto-save
                 </Badge>
@@ -180,6 +193,46 @@ export default function Home() {
                     <li>• Knowledge base articles</li>
                     <li>• Technical documentation</li>
                   </ul>
+                </div>
+
+                {/* GitHub Docs Option */}
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Edit existing docs from GitHub:</div>
+                  <form onSubmit={handleDocsSubmit} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Owner"
+                        value={docsOwner}
+                        onChange={(e) => setDocsOwner(e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        placeholder="Repository"
+                        value={docsRepo}
+                        onChange={(e) => setDocsRepo(e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <Button 
+                      type="submit"
+                      size="sm" 
+                      className="w-full"
+                      disabled={!docsOwner.trim() || !docsRepo.trim()}
+                      variant="outline"
+                    >
+                      <Github className="h-4 w-4 mr-2" />
+                      Load from GitHub
+                    </Button>
+                  </form>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
                 </div>
                 
                 <Button 

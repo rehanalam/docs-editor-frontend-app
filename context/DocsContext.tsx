@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { DocPage, DocGroup, TableOfContents, DocsState } from '@/lib/docs-types';
 import { DocsStorage } from '@/lib/docs-storage';
+import { GitHubDocsParser } from '@/lib/github-docs-parser';
+import { githubService } from '@/app/api/api';
 import { toast } from 'sonner';
 
 type DocsAction =
@@ -15,7 +17,9 @@ type DocsAction =
   | { type: 'ADD_GROUP'; payload: { name: string } }
   | { type: 'ADD_PAGE'; payload: { groupId: string; title: string; fileName: string } }
   | { type: 'DELETE_PAGE'; payload: { groupId: string; pageId: string } }
-  | { type: 'DELETE_GROUP'; payload: { groupId: string } };
+  | { type: 'DELETE_GROUP'; payload: { groupId: string } }
+  | { type: 'SET_REPO_INFO'; payload: { owner: string; repo: string; branch: string } }
+  | { type: 'SET_COMMITTING'; payload: boolean };
 
 const initialState: DocsState = {
   toc: { groups: [] },
@@ -25,7 +29,19 @@ const initialState: DocsState = {
   isDirty: false,
 };
 
-function docsReducer(state: DocsState, action: DocsAction): DocsState {
+interface ExtendedDocsState extends DocsState {
+  repoOwner?: string;
+  repoName?: string;
+  repoBranch?: string;
+  isCommitting: boolean;
+}
+
+const extendedInitialState: ExtendedDocsState = {
+  ...initialState,
+  isCommitting: false,
+};
+
+function docsReducer(state: ExtendedDocsState, action: DocsAction): ExtendedDocsState {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
@@ -53,9 +69,18 @@ function docsReducer(state: DocsState, action: DocsAction): DocsState {
         lastModified: new Date(),
       };
       
+      // Also update the page in the TOC
+      const updatedGroups = state.toc.groups.map(group => ({
+        ...group,
+        items: group.items.map(item => 
+          item.id === action.payload.pageId ? updatedPage : item
+        )
+      }));
+      
       return {
         ...state,
         currentPage: updatedPage,
+        toc: { groups: updatedGroups },
         isDirty: true,
       };
     }
@@ -153,13 +178,24 @@ function docsReducer(state: DocsState, action: DocsAction): DocsState {
       };
     }
     
+    case 'SET_REPO_INFO':
+      return { 
+        ...state, 
+        repoOwner: action.payload.owner,
+        repoName: action.payload.repo,
+        repoBranch: action.payload.branch,
+      };
+    
+    case 'SET_COMMITTING':
+      return { ...state, isCommitting: action.payload };
+    
     default:
       return state;
   }
 }
 
 interface DocsContextType {
-  state: DocsState;
+  state: ExtendedDocsState;
   actions: {
     loadTOC: () => void;
     saveTOC: () => void;
@@ -171,13 +207,15 @@ interface DocsContextType {
     deletePage: (groupId: string, pageId: string) => void;
     deleteGroup: (groupId: string) => void;
     exportTOCYaml: () => string;
+    loadFromGitHub: (owner: string, repo: string, branch?: string) => Promise<void>;
+    commitToGitHub: (message: string) => Promise<void>;
   };
 }
 
 const DocsContext = createContext<DocsContextType | null>(null);
 
 export function DocsProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(docsReducer, initialState);
+  const [state, dispatch] = useReducer(docsReducer, extendedInitialState);
 
   const loadTOC = useCallback(() => {
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -200,6 +238,77 @@ export function DocsProvider({ children }: { children: React.ReactNode }) {
       toast.error('Failed to save documentation structure');
     }
   }, [state.toc]);
+
+  const loadFromGitHub = useCallback(async (owner: string, repo: string, branch: string = 'main') => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+    dispatch({ type: 'SET_REPO_INFO', payload: { owner, repo, branch } });
+    
+    try {
+      const { toc, contentFiles } = await GitHubDocsParser.parseRepositoryContent(
+        owner, 
+        repo, 
+        branch, 
+        githubService
+      );
+      
+      dispatch({ type: 'SET_TOC', payload: toc });
+      
+      // Save to local storage for offline editing
+      DocsStorage.saveTOC(toc);
+      toc.groups.forEach(group => {
+        group.items.forEach(page => {
+          DocsStorage.savePageContent(page);
+        });
+      });
+      
+      toast.success(`Loaded documentation from ${owner}/${repo}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load from GitHub';
+      dispatch({ type: 'SET_ERROR', payload: message });
+      toast.error(message);
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  }, []);
+
+  const commitToGitHub = useCallback(async (message: string) => {
+    if (!state.repoOwner || !state.repoName || !state.repoBranch) {
+      toast.error('No repository connected');
+      return;
+    }
+    
+    dispatch({ type: 'SET_COMMITTING', payload: true });
+    
+    try {
+      const { files } = GitHubDocsParser.generateContentStructure(state.toc);
+      
+      const commitRequest = {
+        owner: state.repoOwner,
+        repo: state.repoName,
+        message,
+        branch: state.repoBranch,
+        files: files.map(f => ({
+          path: f.path,
+          content: f.content,
+        })),
+      };
+      
+      const response = await githubService.commitChanges(commitRequest);
+      
+      if (response.status === 200 || response.status === 201) {
+        toast.success('Successfully committed documentation changes');
+        dispatch({ type: 'SET_DIRTY', payload: false });
+      } else {
+        throw new Error('Failed to commit changes');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to commit to GitHub';
+      toast.error(message);
+    } finally {
+      dispatch({ type: 'SET_COMMITTING', payload: false });
+    }
+  }, [state.repoOwner, state.repoName, state.repoBranch, state.toc]);
 
   const openPage = useCallback((pageId: string) => {
     // Find the page in TOC
@@ -272,12 +381,12 @@ export function DocsProvider({ children }: { children: React.ReactNode }) {
     loadTOC();
   }, [loadTOC]);
 
-  // Auto-save TOC when it changes
+  // Auto-save TOC when it changes (but not during GitHub loading)
   useEffect(() => {
-    if (state.toc.groups.length > 0) {
+    if (state.toc.groups.length > 0 && !state.isLoading) {
       saveTOC();
     }
-  }, [state.toc, saveTOC]);
+  }, [state.toc, state.isLoading, saveTOC]);
 
   const contextValue: DocsContextType = {
     state,
@@ -292,6 +401,8 @@ export function DocsProvider({ children }: { children: React.ReactNode }) {
       deletePage,
       deleteGroup,
       exportTOCYaml,
+      loadFromGitHub,
+      commitToGitHub,
     },
   };
 
