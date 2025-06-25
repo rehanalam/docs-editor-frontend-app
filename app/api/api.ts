@@ -1,6 +1,6 @@
 import axios from 'axios';
-
-const BASE_URL = 'http://localhost:3000/api/github';
+// export const BASE_URL = "https://bc0e-2407-d000-1a-b960-7c87-2354-63d1-9bad.ngrok-free.app/api/github"
+export const BASE_URL = 'http://localhost:3000/api/github';
 
 export interface RepositoryContent {
   name: string;
@@ -76,5 +76,7 @@ export class GithubService {
     return response;
   }
 }
+
+
 
 export const githubService = new GithubService();

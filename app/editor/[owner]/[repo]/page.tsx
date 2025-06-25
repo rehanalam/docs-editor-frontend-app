@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Toaster } from '@/components/ui/sonner';
 import { Github, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 
 function EditorContent() {
@@ -39,6 +40,18 @@ function EditorContent() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [state.openFiles]);
   
+  const handleGeneratePortal = async () => {
+    const authKey = localStorage.getItem('apimatic-auth-key') || prompt('Enter your APIMatic Auth Key');
+    if (!authKey) return;
+
+    localStorage.setItem('apimatic-auth-key', authKey);
+    const result = await actions.generatePortal(authKey);
+
+    if (result?.buildId) {
+      // store and later poll status
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
@@ -54,6 +67,7 @@ function EditorContent() {
         
         <div className="flex items-center space-x-3">
           <CommitDialog />
+          <Button onClick={handleGeneratePortal}>{state.isGeneratingPortal ? "Generating..." : "Generate Portal"} </Button>
         </div>
       </header>
       

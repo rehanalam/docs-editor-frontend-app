@@ -4,6 +4,7 @@ import React, { createContext, useContext, useReducer, useCallback, useEffect } 
 import { GitHubFile, FileTreeNode, OpenFile, Branch, CommitRequest } from '@/lib/types';
 import { toast } from 'sonner';
 import { githubService, GithubService } from '@/app/api/api';
+import { portalService } from '@/app/api/portal-api';
 
 interface DocsEditorState {
   owner: string;
@@ -16,6 +17,9 @@ interface DocsEditorState {
   isLoading: boolean;
   error: string | null;
   isCommitting: boolean;
+  isGeneratingPortal: boolean;
+  portalStatus: 'idle' | 'loading' | 'success' | 'error';
+  portalError: string | null;
 }
 
 type DocsEditorAction =
@@ -31,7 +35,9 @@ type DocsEditorAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_COMMITTING'; payload: boolean }
-  | { type: 'MARK_FILES_CLEAN' };
+  | { type: 'MARK_FILES_CLEAN' }
+  | { type: 'SET_PORTAL_STATUS'; payload: DocsEditorState['portalStatus'] }
+  | { type: 'SET_PORTAL_ERROR'; payload: string | null };
 
 export interface GitHubTreeItem {
   path: string;
@@ -103,6 +109,9 @@ const initialState: DocsEditorState = {
   isLoading: false,
   error: null,
   isCommitting: false,
+  isGeneratingPortal: false,
+  portalStatus: 'idle',
+  portalError: null,
 };
 
 function docsEditorReducer(state: DocsEditorState, action: DocsEditorAction): DocsEditorState {
@@ -197,6 +206,12 @@ function docsEditorReducer(state: DocsEditorState, action: DocsEditorAction): Do
       }));
       return { ...state, openFiles: newOpenFiles };
     }
+    case 'SET_PORTAL_STATUS':
+      return { ...state, portalStatus: action.payload };
+
+    case 'SET_PORTAL_ERROR':
+      return { ...state, portalError: action.payload };
+
     
     default:
       return state;
@@ -216,6 +231,7 @@ interface DocsEditorContextType {
     loadFileTree: () => Promise<void>;
     loadBranches: () => Promise<void>;
     commitChanges: (message: string) => Promise<void>;
+    generatePortal: (authKey: string) => Promise<any>;
   };
 }
 
@@ -223,6 +239,35 @@ const DocsEditorContext = createContext<DocsEditorContextType | null>(null);
 
 export function DocsEditorProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(docsEditorReducer, initialState);
+
+  const generatePortal = useCallback(async (authKey: string) => {
+    if (!state.owner || !state.repo) return;
+
+    dispatch({ type: 'SET_PORTAL_STATUS', payload: 'loading' });
+    dispatch({ type: 'SET_PORTAL_ERROR', payload: null });
+
+    try {
+      const response = await portalService.generateHostedPortal({
+        owner: state.owner,
+        repo: state.repo,
+        authKey,
+      });
+
+      if (response?.url) {
+        window.open(response.url, '_blank');
+      } else {
+        alert('No URL returned');
+      }
+
+      toast.success('Portal generation started');
+      dispatch({ type: 'SET_PORTAL_STATUS', payload: 'success' });
+      return response;
+    } catch (error: any) {
+      toast.error('Portal generation failed');
+      dispatch({ type: 'SET_PORTAL_STATUS', payload: 'error' });
+      dispatch({ type: 'SET_PORTAL_ERROR', payload: error.message || 'Unknown error' });
+    }
+  }, [state.owner, state.repo]);
 
   const setRepoInfo = useCallback((owner: string, repo: string) => {
     dispatch({ type: 'SET_REPO_INFO', payload: { owner, repo } });
@@ -402,6 +447,8 @@ export function DocsEditorProvider({ children }: { children: React.ReactNode }) 
       loadFileTree,
       loadBranches,
       commitChanges,
+      generatePortal,
+
     },
   };
 
