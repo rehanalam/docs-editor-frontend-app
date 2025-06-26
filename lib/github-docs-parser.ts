@@ -79,14 +79,21 @@ export class GitHubDocsParser {
             id: `group-${Date.now()}-${Math.random()}`,
             name: entry.group,
             items: entry.items
-              .filter((i: any) => i.page && i.file)
-              .map((i: any) => ({
+              .filter((i:any) => i.page && i.file)
+              .map((i:any) => ({
                 id: `page-${Date.now()}-${Math.random()}`,
                 title: i.page,
                 file: `content/${i.file}`,
                 content: '',
                 lastModified: new Date()
               }))
+          };
+        } else if (entry.group && entry.items?.length === 0) {
+          // Allow empty groups
+          return {
+            id: `group-${Date.now()}-${Math.random()}`,
+            name: entry.group,
+            items: []
           };
         }
         return null;
@@ -157,6 +164,7 @@ export class GitHubDocsParser {
     previousYaml: string
   ): { files: Array<{ path: string; content: string }>, tocYaml: string } {
     const files: Array<{ path: string; content: string }> = [];
+    const folders = new Set<string>();
 
     toc.groups.forEach(group => {
       group.items.forEach(page => {
@@ -164,12 +172,22 @@ export class GitHubDocsParser {
           path: page.file,
           content: page.content
         });
+
+        const folder = page.file.split('/').slice(0, -1).join('/');
+        if (folder) folders.add(folder);
       });
+
+      if (group.items.length === 0) {
+        // Add empty folder for empty group
+        const safeGroupPath = `content/${group.name.toLowerCase().replace(/\s+/g, '-')}`;
+        folders.add(safeGroupPath);
+        files.push({ path: `${safeGroupPath}/.gitkeep`, content: 'placeholder' });
+      }
     });
 
     let parsedYaml: any;
     try {
-      parsedYaml = yaml.load(previousYaml) as any;
+      parsedYaml = yaml.load(previousYaml);
     } catch (e) {
       console.warn('Failed to parse existing TOC YAML. Rebuilding it from scratch.');
     }
@@ -178,7 +196,7 @@ export class GitHubDocsParser {
       let targetGroup = parsedYaml.toc.find((g: any) => g.group === group.name);
       if (!targetGroup) {
         targetGroup = { group: group.name, items: [] };
-        parsedYaml.push(targetGroup);
+        parsedYaml.toc.push(targetGroup);
       }
       const existingFiles = new Set((targetGroup.items || []).map((i: any) => i.file));
       for (const item of group.items) {

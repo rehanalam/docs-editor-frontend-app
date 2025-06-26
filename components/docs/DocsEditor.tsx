@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes';
 import { Save, FileText, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { MDXEditor, headingsPlugin, codeBlockPlugin } from '@mdxeditor/editor';
 
 interface DocsEditorProps {
   className?: string;
@@ -64,7 +65,8 @@ export function DocsEditor({ className }: DocsEditorProps) {
           <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-medium mb-2">No page selected</h3>
           <p className="text-sm">
-            Select a page from the sidebar to start editing, or create a new page to get started.
+            Select a page from the sidebar to start editing, or create a new
+            page to get started.
           </p>
         </div>
       </div>
@@ -84,7 +86,6 @@ export function DocsEditor({ className }: DocsEditorProps) {
 
   return (
     <div className={`${className} flex flex-col`}>
-      
       {/* Editor Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
         <div className="flex items-center space-x-3">
@@ -124,7 +125,7 @@ export function DocsEditor({ className }: DocsEditorProps) {
 
       {/* Editor */}
       <div className="flex-1">
-        <Editor
+        {/* <Editor
           height="100vh"
           language="markdown"
           value={state.currentPage.content}
@@ -191,6 +192,17 @@ export function DocsEditor({ className }: DocsEditorProps) {
             wordBasedSuggestions: 'matchingDocuments',
             wordWrap: 'on',
           }}
+        /> */}
+        <MDXEditor
+          markdown={state.currentPage.content}
+          onChange={handleEditorChange}
+          plugins={[
+            headingsPlugin(),
+            codeBlockPlugin(),
+            // other optional plugins
+          ]}
+          className="h-full"
+          readOnly={false}
         />
       </div>
     </div>
