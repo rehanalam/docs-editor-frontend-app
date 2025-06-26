@@ -2,16 +2,19 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Github, FileText, Code, GitBranch, Save } from 'lucide-react';
+import { Github, FileText, Code, GitBranch, Save, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 export default function Home() {
   const router = useRouter();
   const [owner, setOwner] = useState('');
   const [repo, setRepo] = useState('');
+  const [docsOwner, setDocsOwner] = useState('');
+  const [docsRepo, setDocsRepo] = useState('');
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,9 +22,20 @@ export default function Home() {
       router.push(`/editor/${owner}/${repo}`);
     }
   };
+
+  const handleDocsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (docsOwner.trim() && docsRepo.trim()) {
+      router.push(`/docs/${docsOwner}/${docsRepo}`);
+    }
+  };
   
   const handleDemoClick = () => {
     router.push('/editor/example-org/docs-project');
+  };
+
+  const handleDocsEditorClick = () => {
+    router.push('/docs');
   };
   
   return (
@@ -35,41 +49,49 @@ export default function Home() {
             </div>
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4">
-            Docs Editor
+            Universal Editor Suite
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            A powerful, web-based editor for your GitHub repositories. Edit files, manage branches, 
-            and commit changes with a beautiful VSCode-like interface.
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
+            Choose between GitHub repository editing with VSCode-like interface or 
+            WYSIWYG documentation editing for creating beautiful docs.
           </p>
-          
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
-            <Badge variant="secondary" className="text-sm py-1 px-3">
-              <Github className="h-4 w-4 mr-2" />
-              GitHub Integration
-            </Badge>
-            <Badge variant="secondary" className="text-sm py-1 px-3">
-              <Code className="h-4 w-4 mr-2" />
-              Monaco Editor
-            </Badge>
-            <Badge variant="secondary" className="text-sm py-1 px-3">
-              <GitBranch className="h-4 w-4 mr-2" />
-              Branch Management
-            </Badge>
-            <Badge variant="secondary" className="text-sm py-1 px-3">
-              <Save className="h-4 w-4 mr-2" />
-              Git Commits
-            </Badge>
-          </div>
         </div>
         
-        {/* Main form */}
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-2">
+        {/* Editor Options */}
+        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto mb-16">
+          {/* GitHub Editor */}
+          <Card className="border-2 hover:border-primary/50 transition-colors">
             <CardHeader>
-              <CardTitle className="text-2xl">Open Repository</CardTitle>
-              <CardDescription>
-                Enter a GitHub repository to start editing. You can work with any public repository.
-              </CardDescription>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="bg-blue-500/10 p-3 rounded-lg">
+                  <Github className="h-8 w-8 text-blue-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl">GitHub Repository Editor</CardTitle>
+                  <CardDescription className="text-base">
+                    Edit any GitHub repository with Monaco editor
+                  </CardDescription>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <Github className="h-4 w-4 mr-2" />
+                  GitHub Integration
+                </Badge>
+                <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <Code className="h-4 w-4 mr-2" />
+                  Monaco Editor
+                </Badge>
+                <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <GitBranch className="h-4 w-4 mr-2" />
+                  Branch Management
+                </Badge>
+                <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <Save className="h-4 w-4 mr-2" />
+                  Git Commits
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,16 +135,115 @@ export default function Home() {
                 </Button>
               </form>
               
-              <div className="mt-6 pt-6 border-t">
+              <div className="mt-4 pt-4 border-t">
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Or try the editor with sample data
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Or try with sample data
                   </p>
                   <Button variant="outline" onClick={handleDemoClick} className="text-base">
                     <FileText className="h-4 w-4 mr-2" />
                     View Demo
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* WYSIWYG Docs Editor */}
+          <Card className="border-2 hover:border-primary/50 transition-colors">
+            <CardHeader>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="bg-green-500/10 p-3 rounded-lg">
+                  <Edit3 className="h-8 w-8 text-green-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl">WYSIWYG Docs Editor</CardTitle>
+                  <CardDescription className="text-base">
+                    Create and manage documentation with ease
+                  </CardDescription>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <Edit3 className="h-4 w-4 mr-2" />
+                  WYSIWYG Editing
+                </Badge>
+                <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Markdown Support
+                </Badge>
+                <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <Github className="h-4 w-4 mr-2" />
+                  GitHub Sync
+                </Badge>
+                <Badge variant="secondary" className="text-sm py-1 px-3">
+                  <Save className="h-4 w-4 mr-2" />
+                  Auto-save
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Perfect for:</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• API documentation</li>
+                    <li>• User guides and tutorials</li>
+                    <li>• Knowledge base articles</li>
+                    <li>• Technical documentation</li>
+                  </ul>
+                </div>
+
+                {/* GitHub Docs Option */}
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Edit existing docs from GitHub:</div>
+                  <form onSubmit={handleDocsSubmit} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Owner"
+                        value={docsOwner}
+                        onChange={(e) => setDocsOwner(e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        placeholder="Repository"
+                        value={docsRepo}
+                        onChange={(e) => setDocsRepo(e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <Button 
+                      type="submit"
+                      size="sm" 
+                      className="w-full"
+                      disabled={!docsOwner.trim() || !docsRepo.trim()}
+                      variant="outline"
+                    >
+                      <Github className="h-4 w-4 mr-2" />
+                      Load from GitHub
+                    </Button>
+                  </form>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={handleDocsEditorClick}
+                  size="lg" 
+                  className="w-full text-base py-6"
+                  variant="default"
+                >
+                  <Edit3 className="h-5 w-5 mr-2" />
+                  Start Creating Docs
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -165,12 +286,12 @@ export default function Home() {
               <div className="bg-purple-500/10 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <FileText className="h-6 w-6 text-purple-500" />
               </div>
-              <CardTitle>File Management</CardTitle>
+              <CardTitle>Documentation Management</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Navigate your repository with an intuitive file tree, open multiple 
-                tabs, and manage your workflow efficiently.
+                Create structured documentation with automatic TOC generation, 
+                group management, and export capabilities.
               </p>
             </CardContent>
           </Card>
