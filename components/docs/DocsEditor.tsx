@@ -7,7 +7,19 @@ import { useTheme } from 'next-themes';
 import { Save, FileText, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MDXEditor, headingsPlugin, codeBlockPlugin } from '@mdxeditor/editor';
+import {
+  MDXEditor,
+  headingsPlugin,
+  codeBlockPlugin,
+  diffSourcePlugin,
+  frontmatterPlugin,
+  linkPlugin,
+  listsPlugin,
+  markdownShortcutPlugin,
+  quotePlugin,
+  tablePlugin,
+  toolbarPlugin,
+} from '@mdxeditor/editor';
 
 interface DocsEditorProps {
   className?: string;
@@ -198,8 +210,17 @@ export function DocsEditor({ className }: DocsEditorProps) {
           onChange={handleEditorChange}
           plugins={[
             headingsPlugin(),
-            codeBlockPlugin(),
-            // other optional plugins
+            quotePlugin(),
+            listsPlugin(),
+            markdownShortcutPlugin(),
+            tablePlugin(),
+            codeBlockPlugin({ defaultCodeBlockLanguage: 'tsx' }),
+            frontmatterPlugin(),
+            linkPlugin(),
+            toolbarPlugin({
+              toolbarContents: () => null, // we’ll use inline toolbars per block in future
+            }),
+            diffSourcePlugin(),
           ]}
           className="h-full"
           readOnly={false}
