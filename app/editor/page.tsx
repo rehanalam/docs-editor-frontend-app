@@ -16,31 +16,7 @@ import { createFloatingToolbarPlugin } from '@udecode/plate-floating';
 import { serializeMdx } from '@udecode/plate-serializer-mdx';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { 
-  Save, 
-  Type, 
-  Heading1, 
-  Heading2, 
-  Heading3, 
-  Quote, 
-  List, 
-  ListOrdered, 
-  Table, 
-  Image, 
-  Video,
-  Info,
-  Check,
-  FileText,
-  Lightbulb,
-  AlertTriangle,
-  AlertCircle,
-  ChevronDown,
-  ChevronRight,
-  CreditCard,
-  Code,
-  Tabs,
-  Star
-} from 'lucide-react';
+import { Save, Type, Heading1, Heading2, Heading3, Quote, List, ListOrdered, Table, Image, Video, Info, Check, FileText, Lightbulb, AlertTriangle, AlertCircle, ChevronDown, ChevronRight, CreditCard, Code, Table as Tabs, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
